@@ -18,6 +18,7 @@ import java.io.InputStreamReader
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private lateinit var songReceiver: BroadcastReceiver
+    private lateinit var progressReceiver: BroadcastReceiver
     private var isPlaying = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -48,7 +49,7 @@ class MainActivity : AppCompatActivity() {
             startService(intent)
         }
 
-        // Initialize and register the receiver
+        // Initialize and register the songReceiver
         songReceiver = object : BroadcastReceiver() {
             override fun onReceive(context: Context?, intent: Intent?) {
                 intent?.let {
@@ -83,11 +84,26 @@ class MainActivity : AppCompatActivity() {
             }
         }
         registerReceiver(songReceiver, IntentFilter(MusicService.ACTION_UPDATE_UI))
+
+        // Initialize and register the progressReceiver
+        progressReceiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context?, intent: Intent?) {
+                intent?.let {
+                    val progress = it.getIntExtra("PROGRESS", 0)
+                    val duration = it.getIntExtra("DURATION", 0)
+                    binding.seekBar.max = duration
+                    binding.seekBar.progress = progress
+                    binding.seekBar.visibility = View.VISIBLE
+                }
+            }
+        }
+        registerReceiver(progressReceiver, IntentFilter(MusicService.ACTION_UPDATE_PROGRESS))
     }
 
     override fun onDestroy() {
         super.onDestroy()
         unregisterReceiver(songReceiver)
+        unregisterReceiver(progressReceiver)
     }
 
     private fun updatePlayPauseButton() {

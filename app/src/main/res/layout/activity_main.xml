@@ -55,12 +55,6 @@
         </LinearLayout>
     </ScrollView>
 
-    <SeekBar
-        android:id="@+id/seek_bar"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_toStartOf="@id/play_song_bar" />
-
     <LinearLayout
         android:id="@+id/play_song_bar"
         android:layout_width="match_parent"
@@ -122,4 +116,11 @@
             android:layout_weight="1"
             android:src="@drawable/baseline_skip_next_24" />
     </LinearLayout>
+
+    <SeekBar
+        android:id="@+id/seek_bar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_above="@id/play_song_bar"
+        android:visibility="gone" />
 </RelativeLayout>

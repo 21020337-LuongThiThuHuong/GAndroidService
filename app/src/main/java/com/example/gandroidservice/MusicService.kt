@@ -9,6 +9,7 @@ import android.app.Service
 import android.content.Intent
 import android.media.MediaPlayer
 import android.os.Build
+import android.os.Handler
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
 
@@ -18,10 +19,26 @@ class MusicService : Service() {
         const val CHANNEL_ID = "MusicServiceChannel"
         const val ACTION_UPDATE_UI = "com.example.gandroidservice.UPDATE_UI"
         const val ACTION_PLAY_PAUSE = "com.example.gandroidservice.PLAY_PAUSE"
+        const val ACTION_UPDATE_PROGRESS = "com.example.gandroidservice.UPDATE_PROGRESS"
     }
 
     private var mediaPlayer: MediaPlayer? = null
     private var isPlaying = false
+    private val handler = Handler()
+    private val updateProgressTask = object : Runnable {
+        override fun run() {
+            mediaPlayer?.let {
+                val progress = it.currentPosition
+                val duration = it.duration
+                val progressIntent = Intent(ACTION_UPDATE_PROGRESS).apply {
+                    putExtra("PROGRESS", progress)
+                    putExtra("DURATION", duration)
+                }
+                sendBroadcast(progressIntent)
+            }
+            handler.postDelayed(this, 1000)
+        }
+    }
 
     override fun onCreate() {
         super.onCreate()
@@ -67,6 +84,8 @@ class MusicService : Service() {
                             putExtra("IS_PLAYING", isPlaying)
                         }
                         sendBroadcast(updateUIIntent)
+
+                        handler.post(updateProgressTask)
                     } else {
                         stopSelf()
                     }
@@ -81,9 +100,11 @@ class MusicService : Service() {
         if (mediaPlayer?.isPlaying == true) {
             mediaPlayer?.pause()
             isPlaying = false
+            handler.removeCallbacks(updateProgressTask)
         } else {
             mediaPlayer?.start()
             isPlaying = true
+            handler.post(updateProgressTask)
         }
 
         // Gửi broadcast để cập nhật UI
@@ -100,6 +121,7 @@ class MusicService : Service() {
     override fun onDestroy() {
         super.onDestroy()
         mediaPlayer?.release()
+        handler.removeCallbacks(updateProgressTask)
     }
 
     private fun createNotificationChannel() {
