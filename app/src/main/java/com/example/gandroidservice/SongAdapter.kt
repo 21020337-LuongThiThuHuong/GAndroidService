@@ -10,35 +10,7 @@ import com.example.gandroidservice.databinding.SongItemBinding
 
 class SongAdapter(private val songs: List<Song>, private val context: Context) : RecyclerView.Adapter<SongAdapter.SongViewHolder>() {
 
-    private var selectedPosition = RecyclerView.NO_POSITION // Variable to keep track of selected position
-
-    inner class SongViewHolder(private val binding: SongItemBinding) : RecyclerView.ViewHolder(binding.root) {
-        fun bind(song: Song, isSelected: Boolean) {
-            binding.songName.text = song.song_name
-            binding.songArtist.text = song.song_artist
-            val imageResourceId = binding.root.context.resources.getIdentifier(
-                song.song_image, "drawable", binding.root.context.packageName)
-            binding.songImg.setImageResource(imageResourceId)
-
-            // Show or hide the song_status based on selection
-            binding.songStatus.visibility = if (isSelected) View.VISIBLE else View.GONE
-
-            binding.root.setOnClickListener {
-                val intent = Intent(context, MusicService::class.java).apply {
-                    putExtra("SONG_NAME", song.song_name)
-                    putExtra("SONG_ARTIST", song.song_artist)
-                    putExtra("SONG_FILE", song.song_file.substringBeforeLast("."))
-                    putExtra("SONG_IMAGE", song.song_image)
-                }
-                context.startService(intent)
-
-                // Update selected position and notify the adapter
-                notifyItemChanged(selectedPosition) // Reset the previously selected item
-                selectedPosition = adapterPosition
-                notifyItemChanged(selectedPosition) // Highlight the newly selected item
-            }
-        }
-    }
+    private var selectedPosition = -1
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): SongViewHolder {
         val binding = SongItemBinding.inflate(LayoutInflater.from(parent.context), parent, false)
@@ -46,9 +18,48 @@ class SongAdapter(private val songs: List<Song>, private val context: Context) :
     }
 
     override fun onBindViewHolder(holder: SongViewHolder, position: Int) {
-        val isSelected = position == selectedPosition
-        holder.bind(songs[position], isSelected)
+        val song = songs[position]
+        holder.bind(song, selectedPosition)
+        holder.itemView.setOnClickListener {
+            val previousSelectedPosition = selectedPosition
+            selectedPosition = holder.adapterPosition
+            notifyItemChanged(previousSelectedPosition)
+            notifyItemChanged(selectedPosition)
+
+            val intent = Intent(context, MusicService::class.java).apply {
+                putParcelableArrayListExtra("SONG_LIST", ArrayList(songs))
+                putExtra("SONG_POSITION", selectedPosition)
+            }
+            context.startService(intent)
+        }
     }
 
-    override fun getItemCount() = songs.size
+    override fun getItemCount(): Int {
+        return songs.size
+    }
+
+    fun getSelectedPosition(): Int {
+        return selectedPosition
+    }
+
+    fun setSelectedPosition(position: Int) {
+        val previousSelectedPosition = selectedPosition
+        selectedPosition = position
+        notifyItemChanged(previousSelectedPosition)
+        notifyItemChanged(selectedPosition)
+    }
+
+    class SongViewHolder(private val binding: SongItemBinding) : RecyclerView.ViewHolder(binding.root) {
+        fun bind(song: Song, selectedPosition: Int) {
+            binding.songName.text = song.song_name
+            binding.songArtist.text = song.song_artist
+            binding.songStatus.visibility = if (adapterPosition == selectedPosition) View.VISIBLE else View.GONE
+            val imageResourceId = binding.root.context.resources.getIdentifier(song.song_image, "drawable", binding.root.context.packageName)
+            if (imageResourceId != 0) {
+                binding.songImg.setImageResource(imageResourceId)
+            } else {
+                binding.songImg.setImageResource(R.drawable.ic_launcher_background) // Default image
+            }
+        }
+    }
 }

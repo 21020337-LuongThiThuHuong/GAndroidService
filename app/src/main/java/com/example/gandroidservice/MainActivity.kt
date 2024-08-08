@@ -6,6 +6,7 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.os.Bundle
 import android.view.View
+import android.widget.SeekBar
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
@@ -14,6 +15,7 @@ import com.example.gandroidservice.databinding.ActivityMainBinding
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import java.io.InputStreamReader
+import kotlin.random.Random
 
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
@@ -47,6 +49,25 @@ class MainActivity : AppCompatActivity() {
                 action = MusicService.ACTION_PLAY_PAUSE
             }
             startService(intent)
+        }
+
+        binding.skipButton.setOnClickListener {
+            val intent = Intent(this, MusicService::class.java).apply {
+                action = MusicService.ACTION_SKIP_TO_NEXT
+                putParcelableArrayListExtra("SONG_LIST", ArrayList(songs))
+                putExtra("SONG_POSITION", songAdapter.getSelectedPosition())
+            }
+            startService(intent)
+        }
+
+        binding.randomButton.setOnClickListener {
+            val randomPosition = Random.nextInt(songs.size)
+            val intent = Intent(this, MusicService::class.java).apply {
+                putParcelableArrayListExtra("SONG_LIST", ArrayList(songs))
+                putExtra("SONG_POSITION", randomPosition)
+            }
+            startService(intent)
+            songAdapter.setSelectedPosition(randomPosition)
         }
 
         // Initialize and register the songReceiver
@@ -98,12 +119,23 @@ class MainActivity : AppCompatActivity() {
             }
         }
         registerReceiver(progressReceiver, IntentFilter(MusicService.ACTION_UPDATE_PROGRESS))
-    }
 
-    override fun onDestroy() {
-        super.onDestroy()
-        unregisterReceiver(songReceiver)
-        unregisterReceiver(progressReceiver)
+        // Set listener for seek bar changes
+        binding.seekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {}
+
+            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+
+            override fun onStopTrackingTouch(seekBar: SeekBar?) {
+                seekBar?.let {
+                    val seekIntent = Intent(this@MainActivity, MusicService::class.java).apply {
+                        action = MusicService.ACTION_SEEK_TO
+                        putExtra("SEEK_TO_POSITION", it.progress)
+                    }
+                    startService(seekIntent)
+                }
+            }
+        })
     }
 
     private fun updatePlayPauseButton() {
@@ -119,5 +151,11 @@ class MainActivity : AppCompatActivity() {
         val reader = InputStreamReader(inputStream)
         val type = object : TypeToken<List<Song>>() {}.type
         return Gson().fromJson(reader, type)
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        unregisterReceiver(songReceiver)
+        unregisterReceiver(progressReceiver)
     }
 }
