@@ -39,8 +39,11 @@ class MusicService : Service() {
                     putExtra("DURATION", duration)
                 }
                 sendBroadcast(progressIntent)
+
+                // Update notification with current progress
+                updateNotification()
             }
-            handler.postDelayed(this, 1000)
+            handler.postDelayed(this, 1000) // Update every second
         }
     }
 
@@ -175,16 +178,37 @@ class MusicService : Service() {
         Log.d("MUSIC_SERVICE", "Updating notification")
         val notificationLayout = RemoteViews(packageName, R.layout.noti_customize).apply {
             // Update play/pause button icon
+            val song = songList[currentPosition]
+            setTextViewText(R.id.notification_title, song.song_name)
+            setTextViewText(R.id.notification_artist, song.song_artist)
+            val imageResId = resources.getIdentifier(song.song_image, "drawable", packageName)
+            if (imageResId != 0) {
+                setImageViewResource(R.id.notification_img, imageResId)
+            }
+
             if (isPlaying) {
                 setImageViewResource(R.id.notification_play_pause, R.drawable.baseline_pause_24)
             } else {
                 setImageViewResource(R.id.notification_play_pause, R.drawable.baseline_play_arrow_24)
             }
 
-            // Update ProgressBar
             val progress = mediaPlayer?.currentPosition ?: 0
             val maxProgress = mediaPlayer?.duration ?: 100
             setProgressBar(R.id.notification_progress, maxProgress, progress, false)
+
+            // Setup play/pause button action
+            val playPauseIntent = Intent(this@MusicService, MusicService::class.java).apply {
+                action = MusicService.ACTION_PLAY_PAUSE
+            }
+            val playPausePendingIntent = PendingIntent.getService(this@MusicService, 1, playPauseIntent, PendingIntent.FLAG_IMMUTABLE)
+            setOnClickPendingIntent(R.id.notification_play_pause, playPausePendingIntent)
+
+            // Setup skip button action
+            val skipIntent = Intent(this@MusicService, MusicService::class.java).apply {
+                action = MusicService.ACTION_SKIP_TO_NEXT
+            }
+            val skipPendingIntent = PendingIntent.getService(this@MusicService, 2, skipIntent, PendingIntent.FLAG_IMMUTABLE)
+            setOnClickPendingIntent(R.id.notification_skip, skipPendingIntent)
         }
 
         Log.d("MUSIC_SERVICE", "Notification updated")
