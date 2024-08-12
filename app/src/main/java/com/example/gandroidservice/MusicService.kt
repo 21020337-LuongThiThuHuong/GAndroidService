@@ -102,7 +102,20 @@ class MusicService : Service() {
         if (songList.isNotEmpty()) {
             currentPosition = (currentPosition + 1) % songList.size
             playSong(songList[currentPosition])
+
+            sendUpdateUIBroadcast()
         }
+    }
+
+    private fun sendUpdateUIBroadcast() {
+        val updateUIIntent = Intent(ACTION_UPDATE_UI).apply {
+            putExtra("SONG_NAME", songList[currentPosition].song_name)
+            putExtra("SONG_ARTIST", songList[currentPosition].song_artist)
+            putExtra("SONG_IMAGE", songList[currentPosition].song_image)
+            putExtra("SONG_POSITION", currentPosition) // Truyền vị trí mới
+            putExtra("IS_PLAYING", isPlaying)
+        }
+        sendBroadcast(updateUIIntent)
     }
 
     @SuppressLint("ForegroundServiceType", "RemoteViewLayout")

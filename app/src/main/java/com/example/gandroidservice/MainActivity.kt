@@ -60,6 +60,8 @@ class MainActivity : AppCompatActivity() {
                     putExtra("SONG_POSITION", songAdapter.getSelectedPosition())
                 }
             startService(intent)
+
+            songAdapter.setSelectedPosition((songAdapter.getSelectedPosition() + 1) % songs.size)
         }
 
         binding.randomButton.setOnClickListener {
@@ -84,8 +86,12 @@ class MainActivity : AppCompatActivity() {
                         val songName = it.getStringExtra("SONG_NAME")
                         val songArtist = it.getStringExtra("SONG_ARTIST")
                         val songImage = it.getStringExtra("SONG_IMAGE")
+                        val songPosition = it.getIntExtra("SONG_POSITION", -1)
                         isPlaying = it.getBooleanExtra("IS_PLAYING", false)
-                        updatePlayPauseButton()
+
+                        if (songPosition != -1) {
+                            songAdapter.setSelectedPosition(songPosition)
+                        }
 
                         if (songName != null && songArtist != null && songImage != null) {
                             // Update the play song bar UI
