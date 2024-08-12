@@ -4,6 +4,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.media.AudioManager
 import android.os.Bundle
 import android.view.View
 import android.widget.SeekBar
@@ -49,6 +50,12 @@ class MainActivity : AppCompatActivity() {
                 Intent(this, MusicService::class.java).apply {
                     action = MusicService.ACTION_PLAY_PAUSE
                 }
+
+            if (isPlaying) {
+                binding.playnpauseButton.setImageResource(R.drawable.baseline_play_arrow_24)
+            } else {
+                binding.playnpauseButton.setImageResource(R.drawable.baseline_pause_24)
+            }
             startService(intent)
         }
 
@@ -73,6 +80,24 @@ class MainActivity : AppCompatActivity() {
                 }
             startService(intent)
             songAdapter.setSelectedPosition(randomPosition)
+        }
+
+        val audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
+
+        binding.volumeUpButton.setOnClickListener {
+            audioManager.adjustStreamVolume(
+                AudioManager.STREAM_MUSIC,
+                AudioManager.ADJUST_RAISE,
+                AudioManager.FLAG_SHOW_UI
+            )
+        }
+
+        binding.volumeDownButton.setOnClickListener {
+            audioManager.adjustStreamVolume(
+                AudioManager.STREAM_MUSIC,
+                AudioManager.ADJUST_LOWER,
+                AudioManager.FLAG_SHOW_UI
+            )
         }
 
         // Initialize and register the songReceiver

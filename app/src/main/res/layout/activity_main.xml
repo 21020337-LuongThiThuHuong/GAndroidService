@@ -96,6 +96,20 @@
         </LinearLayout>
 
         <ImageView
+            android:id="@+id/volume_down_button"
+            android:layout_width="35dp"
+            android:layout_height="35dp"
+            android:layout_weight="1"
+            android:src="@drawable/baseline_volume_down_24" />
+
+        <ImageView
+            android:id="@+id/volume_up_button"
+            android:layout_width="30dp"
+            android:layout_height="30dp"
+            android:layout_weight="1"
+            android:src="@drawable/baseline_volume_up_24" />
+
+        <ImageView
             android:id="@+id/playnpause_button"
             android:layout_width="30dp"
             android:layout_height="30dp"

@@ -7,6 +7,7 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
 import android.content.Intent
+import android.media.AudioManager
 import android.media.MediaPlayer
 import android.os.Build
 import android.os.Handler
@@ -23,6 +24,8 @@ class MusicService : Service() {
         const val ACTION_UPDATE_PROGRESS = "com.example.gandroidservice.UPDATE_PROGRESS"
         const val ACTION_SEEK_TO = "com.example.gandroidservice.SEEK_TO"
         const val ACTION_SKIP_TO_NEXT = "com.example.gandroidservice.SKIP_TO_NEXT"
+        const val ACTION_VOLUME_UP = "com.example.gandroidservice.VOLUME_UP"
+        const val ACTION_VOLUME_DOWN = "com.example.gandroidservice.VOLUME_DOWN"
     }
 
     private var mediaPlayer: MediaPlayer? = null
@@ -50,6 +53,7 @@ class MusicService : Service() {
 
     private var songList: List<Song> = emptyList()
     private var currentPosition: Int = 0
+    private val audioManager by lazy { getSystemService(AUDIO_SERVICE) as AudioManager }
 
     override fun onCreate() {
         super.onCreate()
@@ -68,8 +72,9 @@ class MusicService : Service() {
                 val seekToPosition = intent.getIntExtra("SEEK_TO_POSITION", 0)
                 mediaPlayer?.seekTo(seekToPosition)
             }
-
             ACTION_SKIP_TO_NEXT -> skipToNext()
+            ACTION_VOLUME_UP -> adjustVolume(true)
+            ACTION_VOLUME_DOWN -> adjustVolume(false)
             else -> {
                 songList = intent?.getParcelableArrayListExtra<Song>("SONG_LIST") ?: emptyList()
                 currentPosition = intent?.getIntExtra("SONG_POSITION", 0) ?: 0
@@ -116,6 +121,22 @@ class MusicService : Service() {
             putExtra("IS_PLAYING", isPlaying)
         }
         sendBroadcast(updateUIIntent)
+    }
+
+    private fun adjustVolume(increase: Boolean) {
+        val streamType = AudioManager.STREAM_MUSIC
+        val volume = if (increase) {
+            audioManager.getStreamVolume(streamType) + 1
+        } else {
+            audioManager.getStreamVolume(streamType) - 1
+        }
+        audioManager.setStreamVolume(streamType, volume.coerceIn(0, audioManager.getStreamMaxVolume(streamType)), 0)
+
+        audioManager.adjustStreamVolume(
+            AudioManager.STREAM_MUSIC,
+            if (increase) AudioManager.ADJUST_RAISE else AudioManager.ADJUST_LOWER,
+            AudioManager.FLAG_SHOW_UI
+        )
     }
 
     @SuppressLint("ForegroundServiceType", "RemoteViewLayout")
@@ -167,6 +188,34 @@ class MusicService : Service() {
                         PendingIntent.FLAG_IMMUTABLE,
                     )
                 setOnClickPendingIntent(R.id.notification_skip, skipPendingIntent)
+
+                // Setup volume up button action
+                val volumeUpIntent =
+                    Intent(this@MusicService, MusicService::class.java).apply {
+                        action = ACTION_VOLUME_UP
+                    }
+                val volumeUpPendingIntent =
+                    PendingIntent.getService(
+                        this@MusicService,
+                        3,
+                        volumeUpIntent,
+                        PendingIntent.FLAG_IMMUTABLE,
+                    )
+                setOnClickPendingIntent(R.id.volume_up_button, volumeUpPendingIntent)
+
+                // Setup volume down button action
+                val volumeDownIntent =
+                    Intent(this@MusicService, MusicService::class.java).apply {
+                        action = ACTION_VOLUME_DOWN
+                    }
+                val volumeDownPendingIntent =
+                    PendingIntent.getService(
+                        this@MusicService,
+                        4,
+                        volumeDownIntent,
+                        PendingIntent.FLAG_IMMUTABLE,
+                    )
+                setOnClickPendingIntent(R.id.volume_down_button, volumeDownPendingIntent)
 
                 // Setup ProgressBar
                 val progress = mediaPlayer?.currentPosition ?: 0
@@ -266,6 +315,34 @@ class MusicService : Service() {
                         PendingIntent.FLAG_IMMUTABLE,
                     )
                 setOnClickPendingIntent(R.id.notification_skip, skipPendingIntent)
+
+                // Setup volume up button action
+                val volumeUpIntent =
+                    Intent(this@MusicService, MusicService::class.java).apply {
+                        action = ACTION_VOLUME_UP
+                    }
+                val volumeUpPendingIntent =
+                    PendingIntent.getService(
+                        this@MusicService,
+                        3,
+                        volumeUpIntent,
+                        PendingIntent.FLAG_IMMUTABLE,
+                    )
+                setOnClickPendingIntent(R.id.volume_up_button, volumeUpPendingIntent)
+
+                // Setup volume down button action
+                val volumeDownIntent =
+                    Intent(this@MusicService, MusicService::class.java).apply {
+                        action = ACTION_VOLUME_DOWN
+                    }
+                val volumeDownPendingIntent =
+                    PendingIntent.getService(
+                        this@MusicService,
+                        4,
+                        volumeDownIntent,
+                        PendingIntent.FLAG_IMMUTABLE,
+                    )
+                setOnClickPendingIntent(R.id.volume_down_button, volumeDownPendingIntent)
             }
 
         Log.d("MUSIC_SERVICE", "Notification updated")
