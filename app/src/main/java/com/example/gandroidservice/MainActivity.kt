@@ -45,97 +45,116 @@ class MainActivity : AppCompatActivity() {
         }
 
         binding.playnpauseButton.setOnClickListener {
-            val intent = Intent(this, MusicService::class.java).apply {
-                action = MusicService.ACTION_PLAY_PAUSE
-            }
+            val intent =
+                Intent(this, MusicService::class.java).apply {
+                    action = MusicService.ACTION_PLAY_PAUSE
+                }
             startService(intent)
         }
 
         binding.skipButton.setOnClickListener {
-            val intent = Intent(this, MusicService::class.java).apply {
-                action = MusicService.ACTION_SKIP_TO_NEXT
-                putParcelableArrayListExtra("SONG_LIST", ArrayList(songs))
-                putExtra("SONG_POSITION", songAdapter.getSelectedPosition())
-            }
+            val intent =
+                Intent(this, MusicService::class.java).apply {
+                    action = MusicService.ACTION_SKIP_TO_NEXT
+                    putParcelableArrayListExtra("SONG_LIST", ArrayList(songs))
+                    putExtra("SONG_POSITION", songAdapter.getSelectedPosition())
+                }
             startService(intent)
         }
 
         binding.randomButton.setOnClickListener {
             val randomPosition = Random.nextInt(songs.size)
-            val intent = Intent(this, MusicService::class.java).apply {
-                putParcelableArrayListExtra("SONG_LIST", ArrayList(songs))
-                putExtra("SONG_POSITION", randomPosition)
-            }
+            val intent =
+                Intent(this, MusicService::class.java).apply {
+                    putParcelableArrayListExtra("SONG_LIST", ArrayList(songs))
+                    putExtra("SONG_POSITION", randomPosition)
+                }
             startService(intent)
             songAdapter.setSelectedPosition(randomPosition)
         }
 
         // Initialize and register the songReceiver
-        songReceiver = object : BroadcastReceiver() {
-            override fun onReceive(context: Context?, intent: Intent?) {
-                intent?.let {
-                    val songName = it.getStringExtra("SONG_NAME")
-                    val songArtist = it.getStringExtra("SONG_ARTIST")
-                    val songImage = it.getStringExtra("SONG_IMAGE")
-                    isPlaying = it.getBooleanExtra("IS_PLAYING", false)
-                    updatePlayPauseButton()
-
-                    if (songName != null && songArtist != null && songImage != null) {
-                        // Update the play song bar UI
-                        binding.playSongName.text = songName
-                        binding.playSongArtist.text = songArtist
-
-                        // Get image resource identifier
-                        val imageResourceId = resources.getIdentifier(songImage, "drawable", packageName)
-                        if (imageResourceId != 0) {
-                            binding.playSongImg.setImageResource(imageResourceId)
-                        } else {
-                            binding.playSongImg.setImageResource(R.drawable.ic_launcher_background)
-                        }
-
-                        // Show the play song bar
-                        binding.playSongBar.visibility = View.VISIBLE
-
-                        // Update play/pause button icon
+        songReceiver =
+            object : BroadcastReceiver() {
+                override fun onReceive(
+                    context: Context?,
+                    intent: Intent?,
+                ) {
+                    intent?.let {
+                        val songName = it.getStringExtra("SONG_NAME")
+                        val songArtist = it.getStringExtra("SONG_ARTIST")
+                        val songImage = it.getStringExtra("SONG_IMAGE")
+                        isPlaying = it.getBooleanExtra("IS_PLAYING", false)
                         updatePlayPauseButton()
-                    } else {
-                        // Log the error or handle it appropriately
+
+                        if (songName != null && songArtist != null && songImage != null) {
+                            // Update the play song bar UI
+                            binding.playSongName.text = songName
+                            binding.playSongArtist.text = songArtist
+
+                            // Get image resource identifier
+                            val imageResourceId =
+                                resources.getIdentifier(songImage, "drawable", packageName)
+                            if (imageResourceId != 0) {
+                                binding.playSongImg.setImageResource(imageResourceId)
+                            } else {
+                                binding.playSongImg.setImageResource(R.drawable.ic_launcher_background)
+                            }
+
+                            // Show the play song bar
+                            binding.playSongBar.visibility = View.VISIBLE
+
+                            // Update play/pause button icon
+                            updatePlayPauseButton()
+                        } else {
+                            // Log the error or handle it appropriately
+                        }
                     }
                 }
             }
-        }
         registerReceiver(songReceiver, IntentFilter(MusicService.ACTION_UPDATE_UI))
 
         // Initialize and register the progressReceiver
-        progressReceiver = object : BroadcastReceiver() {
-            override fun onReceive(context: Context?, intent: Intent?) {
-                intent?.let {
-                    val progress = it.getIntExtra("PROGRESS", 0)
-                    val duration = it.getIntExtra("DURATION", 0)
-                    binding.seekBar.max = duration
-                    binding.seekBar.progress = progress
-                    binding.seekBar.visibility = View.VISIBLE
+        progressReceiver =
+            object : BroadcastReceiver() {
+                override fun onReceive(
+                    context: Context?,
+                    intent: Intent?,
+                ) {
+                    intent?.let {
+                        val progress = it.getIntExtra("PROGRESS", 0)
+                        val duration = it.getIntExtra("DURATION", 0)
+                        binding.seekBar.max = duration
+                        binding.seekBar.progress = progress
+                        binding.seekBar.visibility = View.VISIBLE
+                    }
                 }
             }
-        }
         registerReceiver(progressReceiver, IntentFilter(MusicService.ACTION_UPDATE_PROGRESS))
 
         // Set listener for seek bar changes
-        binding.seekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
-            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {}
+        binding.seekBar.setOnSeekBarChangeListener(
+            object : SeekBar.OnSeekBarChangeListener {
+                override fun onProgressChanged(
+                    seekBar: SeekBar?,
+                    progress: Int,
+                    fromUser: Boolean,
+                ) {}
 
-            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+                override fun onStartTrackingTouch(seekBar: SeekBar?) {}
 
-            override fun onStopTrackingTouch(seekBar: SeekBar?) {
-                seekBar?.let {
-                    val seekIntent = Intent(this@MainActivity, MusicService::class.java).apply {
-                        action = MusicService.ACTION_SEEK_TO
-                        putExtra("SEEK_TO_POSITION", it.progress)
+                override fun onStopTrackingTouch(seekBar: SeekBar?) {
+                    seekBar?.let {
+                        val seekIntent =
+                            Intent(this@MainActivity, MusicService::class.java).apply {
+                                action = MusicService.ACTION_SEEK_TO
+                                putExtra("SEEK_TO_POSITION", it.progress)
+                            }
+                        startService(seekIntent)
                     }
-                    startService(seekIntent)
                 }
-            }
-        })
+            },
+        )
     }
 
     private fun updatePlayPauseButton() {
