@@ -1,6 +1,5 @@
 package com.example.gandroidservice
 
-import android.annotation.SuppressLint
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -15,6 +14,7 @@ import android.os.IBinder
 import android.util.Log
 import android.widget.RemoteViews
 import androidx.core.app.NotificationCompat
+import kotlin.random.Random
 
 class MusicService : Service() {
     companion object {
@@ -26,6 +26,7 @@ class MusicService : Service() {
         const val ACTION_SKIP_TO_NEXT = "com.example.gandroidservice.SKIP_TO_NEXT"
         const val ACTION_VOLUME_UP = "com.example.gandroidservice.VOLUME_UP"
         const val ACTION_VOLUME_DOWN = "com.example.gandroidservice.VOLUME_DOWN"
+        const val ACTION_PLAY_RANDOM = "com.example.gandroidservice.PLAY_RANDOM"
     }
 
     private var mediaPlayer: MediaPlayer? = null
@@ -44,10 +45,9 @@ class MusicService : Service() {
                         }
                     sendBroadcast(progressIntent)
 
-                    // Update notification with current progress
                     updateNotification()
                 }
-                handler.postDelayed(this, 1000) // Update every second
+                handler.postDelayed(this, 1000)
             }
         }
 
@@ -60,7 +60,6 @@ class MusicService : Service() {
         createNotificationChannel()
     }
 
-    @SuppressLint("ForegroundServiceType")
     override fun onStartCommand(
         intent: Intent?,
         flags: Int,
@@ -72,9 +71,11 @@ class MusicService : Service() {
                 val seekToPosition = intent.getIntExtra("SEEK_TO_POSITION", 0)
                 mediaPlayer?.seekTo(seekToPosition)
             }
+
             ACTION_SKIP_TO_NEXT -> skipToNext()
             ACTION_VOLUME_UP -> adjustVolume(true)
             ACTION_VOLUME_DOWN -> adjustVolume(false)
+            ACTION_PLAY_RANDOM -> playRandomSong()
             else -> {
                 songList = intent?.getParcelableArrayListExtra<Song>("SONG_LIST") ?: emptyList()
                 currentPosition = intent?.getIntExtra("SONG_POSITION", 0) ?: 0
@@ -82,6 +83,24 @@ class MusicService : Service() {
             }
         }
         return START_NOT_STICKY
+    }
+
+    private fun playRandomSong() {
+        if (songList.isNotEmpty()) {
+            currentPosition = Random.nextInt(songList.size)
+            val randomSong = songList[currentPosition]
+            playSong(randomSong)
+
+            // Send broadcast to update the adapter
+            val updateUIIntent =
+                Intent(ACTION_UPDATE_UI).apply {
+                    putExtra("SONG_POSITION", currentPosition)
+                    putExtra("IS_PLAYING", isPlaying)
+                }
+            sendBroadcast(updateUIIntent)
+        } else {
+            Log.e("MusicService", "No songs available to play")
+        }
     }
 
     private fun togglePlayPause() {
@@ -113,33 +132,38 @@ class MusicService : Service() {
     }
 
     private fun sendUpdateUIBroadcast() {
-        val updateUIIntent = Intent(ACTION_UPDATE_UI).apply {
-            putExtra("SONG_NAME", songList[currentPosition].song_name)
-            putExtra("SONG_ARTIST", songList[currentPosition].song_artist)
-            putExtra("SONG_IMAGE", songList[currentPosition].song_image)
-            putExtra("SONG_POSITION", currentPosition) // Truyền vị trí mới
-            putExtra("IS_PLAYING", isPlaying)
-        }
+        val updateUIIntent =
+            Intent(ACTION_UPDATE_UI).apply {
+                putExtra("SONG_NAME", songList[currentPosition].song_name)
+                putExtra("SONG_ARTIST", songList[currentPosition].song_artist)
+                putExtra("SONG_IMAGE", songList[currentPosition].song_image)
+                putExtra("SONG_POSITION", currentPosition)
+                putExtra("IS_PLAYING", isPlaying)
+            }
         sendBroadcast(updateUIIntent)
     }
 
     private fun adjustVolume(increase: Boolean) {
         val streamType = AudioManager.STREAM_MUSIC
-        val volume = if (increase) {
-            audioManager.getStreamVolume(streamType) + 1
-        } else {
-            audioManager.getStreamVolume(streamType) - 1
-        }
-        audioManager.setStreamVolume(streamType, volume.coerceIn(0, audioManager.getStreamMaxVolume(streamType)), 0)
+        val volume =
+            if (increase) {
+                audioManager.getStreamVolume(streamType) + 1
+            } else {
+                audioManager.getStreamVolume(streamType) - 1
+            }
+        audioManager.setStreamVolume(
+            streamType,
+            volume.coerceIn(0, audioManager.getStreamMaxVolume(streamType)),
+            0,
+        )
 
         audioManager.adjustStreamVolume(
             AudioManager.STREAM_MUSIC,
             if (increase) AudioManager.ADJUST_RAISE else AudioManager.ADJUST_LOWER,
-            AudioManager.FLAG_SHOW_UI
+            AudioManager.FLAG_SHOW_UI,
         )
     }
 
-    @SuppressLint("ForegroundServiceType", "RemoteViewLayout")
     private fun playSong(song: Song) {
         val songName = song.song_name
         val songArtist = song.song_artist
@@ -150,7 +174,6 @@ class MusicService : Service() {
         val pendingIntent =
             PendingIntent.getActivity(this, 0, notificationIntent, PendingIntent.FLAG_IMMUTABLE)
 
-        // Create custom RemoteViews for the notification layout
         val notificationLayout =
             RemoteViews(packageName, R.layout.noti_customize).apply {
                 setTextViewText(R.id.notification_title, songName)
@@ -161,7 +184,6 @@ class MusicService : Service() {
                     setImageViewResource(R.id.notification_img, imageResId)
                 }
 
-                // Setup play/pause button action
                 val playPauseIntent =
                     Intent(this@MusicService, MusicService::class.java).apply {
                         action = ACTION_PLAY_PAUSE
@@ -175,7 +197,6 @@ class MusicService : Service() {
                     )
                 setOnClickPendingIntent(R.id.notification_play_pause, playPausePendingIntent)
 
-                // Setup skip button action
                 val skipIntent =
                     Intent(this@MusicService, MusicService::class.java).apply {
                         action = ACTION_SKIP_TO_NEXT
@@ -189,7 +210,6 @@ class MusicService : Service() {
                     )
                 setOnClickPendingIntent(R.id.notification_skip, skipPendingIntent)
 
-                // Setup volume up button action
                 val volumeUpIntent =
                     Intent(this@MusicService, MusicService::class.java).apply {
                         action = ACTION_VOLUME_UP
@@ -203,7 +223,6 @@ class MusicService : Service() {
                     )
                 setOnClickPendingIntent(R.id.volume_up_button, volumeUpPendingIntent)
 
-                // Setup volume down button action
                 val volumeDownIntent =
                     Intent(this@MusicService, MusicService::class.java).apply {
                         action = ACTION_VOLUME_DOWN
@@ -217,7 +236,6 @@ class MusicService : Service() {
                     )
                 setOnClickPendingIntent(R.id.volume_down_button, volumeDownPendingIntent)
 
-                // Setup ProgressBar
                 val progress = mediaPlayer?.currentPosition ?: 0
                 val maxProgress = mediaPlayer?.duration ?: 100
                 setProgressBar(R.id.notification_progress, maxProgress, progress, false)
@@ -228,7 +246,7 @@ class MusicService : Service() {
                 .Builder(this, CHANNEL_ID)
                 .setSmallIcon(R.drawable.sasageyo)
                 .setContentIntent(pendingIntent)
-                .setCustomContentView(notificationLayout) // Use the custom layout
+                .setCustomContentView(notificationLayout)
                 .setStyle(NotificationCompat.DecoratedCustomViewStyle())
                 .build()
 
@@ -261,12 +279,9 @@ class MusicService : Service() {
         }
     }
 
-    @SuppressLint("RemoteViewLayout", "ForegroundServiceType")
     private fun updateNotification() {
-        Log.d("MUSIC_SERVICE", "Updating notification")
         val notificationLayout =
             RemoteViews(packageName, R.layout.noti_customize).apply {
-                // Update play/pause button icon
                 val song = songList[currentPosition]
                 setTextViewText(R.id.notification_title, song.song_name)
                 setTextViewText(R.id.notification_artist, song.song_artist)
@@ -343,9 +358,21 @@ class MusicService : Service() {
                         PendingIntent.FLAG_IMMUTABLE,
                     )
                 setOnClickPendingIntent(R.id.volume_down_button, volumeDownPendingIntent)
-            }
 
-        Log.d("MUSIC_SERVICE", "Notification updated")
+                // Setup play random button action
+                val playRandomIntent =
+                    Intent(this@MusicService, MusicService::class.java).apply {
+                        action = ACTION_PLAY_RANDOM
+                    }
+                val playRandomPendingIntent =
+                    PendingIntent.getService(
+                        this@MusicService,
+                        5,
+                        playRandomIntent,
+                        PendingIntent.FLAG_IMMUTABLE,
+                    )
+                setOnClickPendingIntent(R.id.random_button, playRandomPendingIntent)
+            }
 
         val notification: Notification =
             NotificationCompat
@@ -356,7 +383,6 @@ class MusicService : Service() {
                 .build()
 
         startForeground(1, notification)
-        Log.d("MUSIC_SERVICE", "Notification started")
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -377,8 +403,6 @@ class MusicService : Service() {
                 )
             val manager = getSystemService(NotificationManager::class.java)
             manager.createNotificationChannel(serviceChannel)
-
-            Log.d("MUSIC_SERVICE", "Notification channel created")
         }
     }
 }

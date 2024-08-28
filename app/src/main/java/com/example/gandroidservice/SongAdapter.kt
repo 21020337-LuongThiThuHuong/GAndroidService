@@ -1,7 +1,6 @@
 package com.example.gandroidservice
 
 import android.content.Context
-import android.content.Intent
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -11,6 +10,7 @@ import com.example.gandroidservice.databinding.SongItemBinding
 class SongAdapter(
     private val songs: List<Song>,
     private val context: Context,
+    private val onSongClick: (Song, Int) -> Unit,
 ) : RecyclerView.Adapter<SongAdapter.SongViewHolder>() {
     private var selectedPosition = -1
 
@@ -33,13 +33,7 @@ class SongAdapter(
             selectedPosition = holder.adapterPosition
             notifyItemChanged(previousSelectedPosition)
             notifyItemChanged(selectedPosition)
-
-            val intent =
-                Intent(context, MusicService::class.java).apply {
-                    putParcelableArrayListExtra("SONG_LIST", ArrayList(songs))
-                    putExtra("SONG_POSITION", selectedPosition)
-                }
-            context.startService(intent)
+            onSongClick(song, selectedPosition)
         }
     }
 
@@ -74,7 +68,7 @@ class SongAdapter(
             if (imageResourceId != 0) {
                 binding.songImg.setImageResource(imageResourceId)
             } else {
-                binding.songImg.setImageResource(R.drawable.ic_launcher_background) // Default image
+                binding.songImg.setImageResource(R.drawable.ic_launcher_background)
             }
         }
     }
